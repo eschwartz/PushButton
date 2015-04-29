@@ -54,6 +54,47 @@ describe('ResourceCollection', () => {
         done(() => done(), done);
     });
 
+    it('should wire param references in resources', (done) => {
+      var resourceCollection = new ResourceCollection({
+        params: {
+          foo: 'bar'
+        },
+        resources: [
+          {
+            name: 'fooService',
+            type: 'Foo',
+            actions: ['createResource'],
+            config: {
+              foo: { $ref: 'params.foo' }
+            }
+          }
+        ]
+      });
+      resourceCollection.setConfigManager(configManager);
+
+      resourceCollection.createResource().
+        then(() => {
+          assert.equal(fooService.config['foo'], 'bar');
+        }).
+        done(() => done(), done);
+    });
+    
+    it('should import params', () => {
+      console.warn('Spec not yet defined');
+    });
+    
+    it('should merge imported params', () => {
+      console.warn('Spec not yet defined');
+    });
+    
+    it('should import resources', () => {
+      console.warn('Spec not yet defined');
+    });
+    
+    it('should merge imported resources', () => {
+      console.warn('Spec not yet defined');
+    });
+
     it('should deploy resources in order', (done) => {
       var resourceCollection = new ResourceCollection({
         resources: [
