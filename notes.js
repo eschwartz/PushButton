@@ -23,7 +23,7 @@ var queuePromise = pb.getContext().
   // Update SQS_URL env variable
   then(function(queueUrl) {
     return context.resources['turbine-engine-eb-env'].
-      updateEnv({
+      updateEnvironmentVars({
         'SQS_URL': queueUrl
       });
   });
@@ -56,4 +56,4 @@ envResources = {
       }
     ]
   }
-}
+};

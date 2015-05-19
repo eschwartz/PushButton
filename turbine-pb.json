@@ -3,7 +3,8 @@
 		"appName": "Turbine",
 		"appNameApi": "Turbine API",
 		"appNameEngine": "Turbine Engine",
-		"region": "us-east-1"
+		"region": "us-east-1",
+        "sqsIamId": "350421549183"
 	},
 	"args": [
 		{
@@ -22,33 +23,6 @@
 				"region": {"$ref": "params.region"},
 				"ApplicationName": {"$ref": "params.appNameEngine"},
 				"VersionLabel": "pb-archive"
-			}
-		},
-		{
-			"type": "SqsQueue",
-			"name": "alert-queue",
-			"actions": [],
-			"config": {
-				"region": {"$ref": "params.region"},
-				"queueName": {"$ref": "tmpl!{{params.version}}"},
-				"attributes": {
-					"Policy": {
-						"$ref": "json!",
-						"json": {
-							"Id": {"$ref": "tmpl!{{params.version}}"},
-							"Statement": [
-								{
-									"Effect": "Allow",
-									"Action": "SQS:*",
-									"Principal": {
-										"AWS": "arn:aws:iam::350421549183:user/turbine-sqs"
-									},
-									"Resource": {"$ref": "tmpl!arn:aws:sqs:us-east-1:350421549183:turbine-alert-{{params.version}}"}
-								}
-							]
-						}
-					}
-				}
 			}
 		},
 		{
@@ -72,7 +46,7 @@
 					"instances": {
 						"keyName": "turbine",
 						"iamInstanceProfile": "Turbine-API",
-						"instanceType": "c3.large",
+						"instanceType": "t1.micro",
 						"monitoringInterval": "1 minute",
 						"securityGroups": "Lee Home,MLG Downtown,MLG Excelsior,Seth Home,Turbine"
 					},
@@ -82,20 +56,6 @@
 					},
 					"updates": {
 						"rollingUpdateEnabled": "false"
-					},
-					"sqsWorker": {
-						"sqsQueue": {"$ref": "resources.alert-queue"},
-						"httpPostPath": "/alert-engine",
-						"mimeType": "application/json",
-						"httpConnections": "10",
-						"timeouts": {
-							"connect": "5",
-							"inactivity": "299",
-							"visibility": "300",
-							"error": "2"
-						},
-						"retentionPeriod": "345600",
-						"maxRetries": "10"
 					},
 					"healthCheck": {
 						"url": {"$ref": "tmpl!/alert-engine?key={{params.alertEngine.ingestKey}}"}
