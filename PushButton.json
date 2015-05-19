@@ -1,0 +1,106 @@
+{
+  "params": {
+    "appName": "Push Button Sandbox",
+    "region": "us-east-1",
+    "versionLabel": "pb-archive",
+    "workerEnvName": "pb-env"
+  },
+  "args": [
+    {
+      "param": "workerEnvName",
+      "flag": "--env-name",
+      "description": "Worker Environment Name"
+    }
+  ],
+  "resources": [
+    {
+      "type": "AppVersion",
+      "name": "pb-app-version",
+      "actions": [],
+      "config": {
+        "region": {"$ref": "params.region" },
+        "ApplicationName": {"$ref": "params.appName"},
+        "VersionLabel": {"$ref": "params.versionLabel"}
+      }
+    },
+    {
+      "type": "SqsQueue",
+      "name": "pb-queue",
+      "actions": ["createResource"],
+      "config": {
+        "region": {"$ref": "params.region"},
+        "queueName": {"$ref": "tmpl!queue-for-{{params.workerEnvName}}"},
+        "attributes": {
+          "Policy": {
+            "$ref": "json!",
+            "json": {
+              "Id": {"$ref": "tmpl!queue-for-{{params.workerEnvName}}"},
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": "SQS:*",
+                  "Principal": {
+                    "AWS": "arn:aws:iam::350421549183:user/turbine-sqs"
+                  },
+                  "Resource": {"$ref": "tmpl!arn:aws:sqs:us-east-1:350421549183:queue-for-{{params.workerEnvName}}"}
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "EbEnvironment",
+      "name": "pb-worker-env",
+      "actions": ["createResource"],
+      "config": {
+        "applicationName": {"$ref": "params.appName"},
+        "environmentName": {"$ref": "params.workerEnvName"},
+        "appVersion": {"$ref": "resources.pb-app-version"},
+        "region": {"$ref": "params.region"},
+        "solutionStack": {
+          "os": "64bit Amazon Linux",
+          "stack": "PHP 5.5"
+        },
+        "tier": "Worker",
+        "options": {
+          "scaling": {
+            "environmentType": "SingleInstance"
+          },
+          "instances": {
+            "keyName": "turbine",
+            "iamInstanceProfile": "Turbine-API",
+            "instanceType": "t1.micro",
+            "monitoringInterval": "1 minute",
+            "securityGroups": "Lee Home,MLG Downtown,MLG Excelsior,Seth Home,Turbine"
+          },
+          "updates": {
+            "rollingUpdateEnabled": "false"
+          },
+          "sqsWorker": {
+            "sqsQueue": {"$ref": "resources.pb-queue"},
+            "httpPostPath": "/alert-engine",
+            "mimeType": "application/json",
+            "httpConnections": "10",
+            "timeouts": {
+              "connect": "5",
+              "inactivity": "299",
+              "visibility": "300",
+              "error": "2"
+            },
+            "retentionPeriod": "345600",
+            "maxRetries": "10"
+          },
+          "phpContainer": {
+            "document_root": "/public",
+            "memory_limit": "256M",
+            "allow_url_fopen": "true",
+            "display_errors": "Off",
+            "max_execution_time": "60"
+          }
+        }
+      }
+    }
+  ]
+}

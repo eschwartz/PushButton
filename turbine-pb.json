@@ -1,0 +1,114 @@
+{
+	"params": {
+		"appName": "Turbine",
+		"appNameApi": "Turbine API",
+		"appNameEngine": "Turbine Engine",
+		"region": "us-east-1"
+	},
+	"args": [
+		{
+			"param": "version",
+			"description": "Application version",
+			"flag": "--app-version",
+			"type": "string"
+		}
+	],
+	"resources": [
+		{
+			"type": "AppVersion",
+			"name": "turbine-app-eng-eb-version",
+			"actions": [],
+			"config": {
+				"region": {"$ref": "params.region"},
+				"ApplicationName": {"$ref": "params.appNameEngine"},
+				"VersionLabel": "pb-archive"
+			}
+		},
+		{
+			"type": "SqsQueue",
+			"name": "alert-queue",
+			"actions": [],
+			"config": {
+				"region": {"$ref": "params.region"},
+				"queueName": {"$ref": "tmpl!{{params.version}}"},
+				"attributes": {
+					"Policy": {
+						"$ref": "json!",
+						"json": {
+							"Id": {"$ref": "tmpl!{{params.version}}"},
+							"Statement": [
+								{
+									"Effect": "Allow",
+									"Action": "SQS:*",
+									"Principal": {
+										"AWS": "arn:aws:iam::350421549183:user/turbine-sqs"
+									},
+									"Resource": {"$ref": "tmpl!arn:aws:sqs:us-east-1:350421549183:turbine-alert-{{params.version}}"}
+								}
+							]
+						}
+					}
+				}
+			}
+		},
+		{
+			"type": "EbEnvironment",
+			"name": "turbine-engine-eb-env",
+			"actions": ["createResource"],
+			"config": {
+				"applicationName": {"$ref": "params.appNameEngine"},
+				"environmentName": {"$ref": "tmpl!turbine-engine-{{params.version}}"},
+				"appVersion": {"$ref": "resources.turbine-app-eng-eb-version"},
+				"region": {"$ref": "params.region"},
+				"solutionStack": {
+					"os": "64bit Amazon Linux",
+					"stack": "PHP 5.5"
+				},
+				"tier": "Worker",
+				"options": {
+					"scaling": {
+						"environmentType": "SingleInstance"
+					},
+					"instances": {
+						"keyName": "turbine",
+						"iamInstanceProfile": "Turbine-API",
+						"instanceType": "c3.large",
+						"monitoringInterval": "1 minute",
+						"securityGroups": "Lee Home,MLG Downtown,MLG Excelsior,Seth Home,Turbine"
+					},
+					"notifications": {
+						"protocol": "email",
+						"endpoint": "smiller@medialogicgroup.com"
+					},
+					"updates": {
+						"rollingUpdateEnabled": "false"
+					},
+					"sqsWorker": {
+						"sqsQueue": {"$ref": "resources.alert-queue"},
+						"httpPostPath": "/alert-engine",
+						"mimeType": "application/json",
+						"httpConnections": "10",
+						"timeouts": {
+							"connect": "5",
+							"inactivity": "299",
+							"visibility": "300",
+							"error": "2"
+						},
+						"retentionPeriod": "345600",
+						"maxRetries": "10"
+					},
+					"healthCheck": {
+						"url": {"$ref": "tmpl!/alert-engine?key={{params.alertEngine.ingestKey}}"}
+					},
+					"phpContainer": {
+						"document_root": "/public",
+						"memory_limit": "256M",
+						"allow_url_fopen": "true",
+						"display_errors": "Off",
+						"max_execution_time": "60"
+					}
+				}
+			}
+		}
+	]
+}
